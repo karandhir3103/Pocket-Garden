@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🌱 Pocket Garden</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --sky-top: #cdeffd;
+    --sky-bottom: #fef6e4;
+    --pot-color: #d98e5c;
+    --pot-dark: #b96f3f;
+    --soil: #6b4a34;
+    --card-bg: #ffffffcc;
+    --text: #5a4636;
+    --accent: #ff9eb5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+  .sun {
+    position: fixed;
+    top: -40px;
+    right: -40px;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff6c9, #ffe083 60%, #ffd15c 100%);
+    box-shadow: 0 0 60px 20px rgba(255, 214, 110, 0.55);
+    z-index: 0;
+  }
+  .clouds { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .cloud {
+    position: absolute;
+    background: #ffffffb0;
+    border-radius: 50px;
+    filter: blur(0.5px);
+  }
+  header {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 28px 16px 8px;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(28px, 5vw, 42px);
+    color: #4b7a3e;
+    text-shadow: 1px 1px 0 #fff;
+  }
+  .subtitle {
+    margin: 6px 0 0;
+    font-size: 15px;
+    opacity: 0.75;
+  }
+  .stats {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 18px auto 10px;
+  }
+  .stat-pill {
+    background: var(--card-bg);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+  .controls {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 0 #e07d97;
+    transition: transform 0.08s ease;
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #e07d97; }
+  button.secondary {
+    background: #8fc7ff;
+    box-shadow: 0 4px 0 #5fa3e0;
+  }
+  button.secondary:active { box-shadow: 0 1px 0 #5fa3e0; }
+
+  .garden {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 20px;
+    max-width: 700px;
+    margin: 0 auto 60px;
+    padding: 0 20px;
+  }
+  .pot-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .plant-stage {
+    height: 70px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: 36px;
+    transform-origin: bottom center;
+    transition: transform 0.25s ease;
+  }
+  .pot-wrap:hover .plant-stage { transform: scale(1.08) rotate(-2deg); }
+  .pot {
+    width: 78px;
+    height: 54px;
+    background: linear-gradient(180deg, var(--pot-color), var(--pot-dark));
+    border-radius: 6px 6px 16px 16px;
+    position: relative;
+    box-shadow: inset 0 -6px 8px rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.15);
+  }
+  .pot::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -4px;
+    right: -4px;
+    height: 10px;
+    background: var(--pot-dark);
+    border-radius: 4px;
+  }
+  .pot-label {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.7;
+    text-align: center;
+    min-height: 14px;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.3) rotate(-10deg); }
+    60% { transform: scale(1.25) rotate(6deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .just-changed { animation: pop 0.4s ease; }
+
+  .sparkle {
+    position: fixed;
+    font-size: 18px;
+    pointer-events: none;
+    animation: floatUp 1.1s ease-out forwards;
+    z-index: 10;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-70px) scale(1.4); }
+  }
+
+  .butterfly {
+    position: fixed;
+    font-size: 20px;
+    pointer-events: none;
+    z-index: 1;
+    animation-name: flutter;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @keyframes flutter {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(40px, -30px) rotate(10deg); }
+    50%  { transform: translate(80px, 10px) rotate(-6deg); }
+    75%  { transform: translate(40px, 40px) rotate(8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  footer {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.55;
+    padding-bottom: 24px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #4b7a3e;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: bold;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 20;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="sun"></div>
+<div class="clouds" id="clouds"></div>
+
+<header>
+  <h1>🌱 Pocket Garden</h1>
+  <p class="subtitle">Click an empty pot to plant a seed. Water it, wait, and watch it bloom!</p>
+</header>
+
+<div class="stats">
+  <div class="stat-pill">🌸 Flowers grown: <span id="flowerCount">0</span></div>
+  <div class="stat-pill">💧 Waters given: <span id="waterCount">0</span></div>
+</div>
+
+<div class="controls">
+  <button id="waterAllBtn">💧 Water All</button>
+  <button id="resetBtn" class="secondary">🔄 Reset Garden</button>
+</div>
+
+<div class="garden" id="garden"></div>
+
+<footer>made with 🌷 — save this file and open it any time, no internet needed</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const STAGES = ['🌱', '🌿', '🌾', '🌷']; // seed -> sprout -> budding -> bloom (final emoji randomized on bloom)
+  const BLOOM_EMOJIS = ['🌷', '🌸', '🌻', '🌼', '🪷', '🌹'];
+  const POT_COUNT = 9;
+  const GROW_TIME_MS = 4500; // time per stage without watering
+  const WATER_BOOST_MS = 2200; // time subtracted per watering
+
+  let flowerCount = 0;
+  let waterCount = 0;
+
+  const gardenEl = document.getElementById('garden');
+  const flowerCountEl = document.getElementById('flowerCount');
+  const waterCountEl = document.getElementById('waterCount');
+  const toastEl = document.getElementById('toast');
+
+  let pots = [];
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toastEl.classList.remove('show'), 1600);
+  }
+
+  function makeSparkles(x, y, emoji) {
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement('div');
+      s.className = 'sparkle';
+      s.textContent = emoji;
+      s.style.left = (x + (Math.random() * 60 - 30)) + 'px';
+      s.style.top = (y + (Math.random() * 20 - 10)) + 'px';
+      document.body.appendChild(s);
+      setTimeout(() => s.remove(), 1200);
+    }
+  }
+
+  function createPot(index) {
+    const wrap = document.createElement('div');
+    wrap.className = 'pot-wrap';
+
+    const stageEl = document.createElement('div');
+    stageEl.className = 'plant-stage';
+    stageEl.textContent = '';
+
+    const potEl = document.createElement('div');
+    potEl.className = 'pot';
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'pot-label';
+    labelEl.textContent = 'empty pot';
+
+    wrap.appendChild(stageEl);
+    wrap.appendChild(potEl);
+    wrap.appendChild(labelEl);
+    gardenEl.appendChild(wrap);
+
+    const potState = {
+      planted: false,
+      stage: 0, // 0..3, 3 = bloomed
+      bloomEmoji: null,
+      plantedAt: 0,
+      stageDeadline: 0,
+      timer: null,
+      stageEl,
+      labelEl,
+      wrap
+    };
+
+    wrap.addEventListener('click', () => handlePotClick(potState));
+    return potState;
+  }
+
+  function bump(el) {
+    el.classList.remove('just-changed');
+    void el.offsetWidth; // reflow to restart animation
+    el.classList.add('just-changed');
+  }
+
+  function handlePotClick(pot) {
+    if (!pot.planted) {
+      plantSeed(pot);
+      return;
+    }
+    if (pot.stage < 3) {
+      waterPlant(pot);
+    } else {
+      // fully bloomed: click to harvest & reset the pot
+      harvestPlant(pot);
+    }
+  }
+
+  function plantSeed(pot) {
+    pot.planted = true;
+    pot.stage = 0;
+    pot.stageEl.textContent = STAGES[0];
+    pot.labelEl.textContent = 'seedling — water me!';
+    bump(pot.stageEl);
+    scheduleGrowth(pot);
+    const rect = pot.wrap.getBoundingClientRect();
+    makeSparkles(rect.left + rect.width / 2, rect.top, '✨');
+    showToast('Seed planted! 🌱');
+  }
+
+  function scheduleGrowth(pot) {
+    clearTimeout(pot.timer);
+    pot.stageDeadline = Date.now() + GROW_TIME_MS;
+    pot.timer = setTimeout(() => growStage(pot), GROW_TIME_MS);
+  }
+
+  function growStage(pot) {
+    if (pot.stage >= 3) return;
+    pot.stage += 1;
+    if (pot.stage === 3) {
+      pot.bloomEmoji = BLOOM_EMOJIS[Math.floor(Math.random() * BLOOM_EMOJIS.length)];
+      pot.stageEl.textContent = pot.bloomEmoji;
+      pot.labelEl.textContent = 'in bloom! click to harvest';
+      bump(pot.stageEl);
+      flowerCount += 1;
+      flowerCountEl.textContent = flowerCount;
+      const rect = pot.wrap.getBoundingClientRect();
+      makeSparkles(rect.left + rect.width / 2, rect.top, '🌟');
+      showToast('A flower bloomed! ' + pot.bloomEmoji);
+    } else {
+      pot.stageEl.textContent = STAGES[pot.stage];
+      pot.labelEl.textContent = pot.stage === 1 ? 'sprouting nicely' : 'almost there...';
+      bump(pot.stageEl);
+      scheduleGrowth(pot);
+    }
+  }
+
+  function waterPlant(pot) {
+    if (pot.stage >= 3) return;
+    waterCount += 1;
+    waterCountEl.textContent = waterCount;
+    const remaining = Math.max(300, pot.stageDeadline - Date.now() - WATER_BOOST_MS);
+    clearTimeout(pot.timer);
+    pot.stageDeadline = Date.now() + remaining;
+    pot.timer = setTimeout(() => growStage(pot), remaining);
+    pot.labelEl.textContent = 'splash! growing faster';
+    const rect = pot.wrap.getBoundingClientRect();
+    makeSparkles(rect.left + rect.width / 2, rect.top, '💧');
+    bump(pot.stageEl);
+  }
+
+  function harvestPlant(pot) {
+    const rect = pot.wrap.getBoundingClientRect();
+    makeSparkles(rect.left + rect.width / 2, rect.top, pot.bloomEmoji || '🌸');
+    clearTimeout(pot.timer);
+    pot.planted = false;
+    pot.stage = 0;
+    pot.bloomEmoji = null;
+    pot.stageEl.textContent = '';
+    pot.labelEl.textContent = 'empty pot';
+    showToast('Harvested! Plant another seed 🌻');
+  }
+
+  function waterAll() {
+    let any = false;
+    pots.forEach(pot => {
+      if (pot.planted && pot.stage < 3) {
+        waterPlant(pot);
+        any = true;
+      }
+    });
+    if (!any) showToast('Nothing to water right now 🙂');
+  }
+
+  function resetGarden() {
+    pots.forEach(pot => {
+      clearTimeout(pot.timer);
+      pot.planted = false;
+      pot.stage = 0;
+      pot.bloomEmoji = null;
+      pot.stageEl.textContent = '';
+      pot.labelEl.textContent = 'empty pot';
+    });
+    flowerCount = 0;
+    waterCount = 0;
+    flowerCountEl.textContent = 0;
+    waterCountEl.textContent = 0;
+    showToast('Garden reset 🌿');
+  }
+
+  document.getElementById('waterAllBtn').addEventListener('click', waterAll);
+  document.getElementById('resetBtn').addEventListener('click', resetGarden);
+
+  for (let i = 0; i < POT_COUNT; i++) {
+    pots.push(createPot(i));
+  }
+
+  // Decorative floating clouds
+  const cloudsEl = document.getElementById('clouds');
+  for (let i = 0; i < 4; i++) {
+    const c = document.createElement('div');
+    c.className = 'cloud';
+    const w = 80 + Math.random() * 100;
+    const h = w * 0.4;
+    c.style.width = w + 'px';
+    c.style.height = h + 'px';
+    c.style.top = (10 + Math.random() * 30) + '%';
+    c.style.left = (Math.random() * 100) + '%';
+    c.style.animation = `driftCloud ${40 + Math.random() * 30}s linear infinite`;
+    c.style.animationDelay = (-Math.random() * 40) + 's';
+    cloudsEl.appendChild(c);
+  }
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = `
+    @keyframes driftCloud {
+      from { transform: translateX(-20vw); }
+      to { transform: translateX(120vw); }
+    }
+  `;
+  document.head.appendChild(styleSheet);
+
+  // Decorative butterflies
+  for (let i = 0; i < 2; i++) {
+    const b = document.createElement('div');
+    b.className = 'butterfly';
+    b.textContent = '🦋';
+    b.style.left = (20 + Math.random() * 60) + '%';
+    b.style.top = (50 + Math.random() * 30) + '%';
+    b.style.animationDuration = (6 + Math.random() * 4) + 's';
+    document.body.appendChild(b);
+  }
+})();
+</script>
+
+</body>
+</html>
